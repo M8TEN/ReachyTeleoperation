@@ -28,6 +28,8 @@ namespace TeleopReachy
         public ArmSide side_id;
 
         public UnityEngine.XR.InputDevice device;
+        
+        public bool is_record_button_pressed = false;
 
         public HandController(string side, UnityEngine.XR.InputDevice handDevice)
         {
@@ -96,6 +98,7 @@ namespace TeleopReachy
 
             AdaptativeCloseHand(rightHand);
             AdaptativeCloseHand(leftHand);
+            CheckRecordButton(leftHand);
         }
 
         private void GetTransforms(HandController hand)
@@ -135,6 +138,16 @@ namespace TeleopReachy
             {
                 hand.device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.trigger, out trigger);
                 hand.trigger = trigger;
+            }
+        }
+
+        private void CheckRecordButton(HandController hand)
+        {
+            if (hand.device.isValid)
+            {
+                bool is_pressed;
+                hand.device.TryGetFeatureValue(UnityEngine.XR.CommonUsages.secondaryButton, out is_pressed);
+                hand.is_record_button_pressed = is_pressed;
             }
         }
     }
