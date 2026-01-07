@@ -18,9 +18,38 @@ public class RecordingServer : MonoBehaviour
     private Thread thread;
     private string robot_ip_address = "127.0.0.1";
 
+    [SerializeField]
+    private HandsTracker hand_tracker;
+    private HandController controller;
+    private bool was_pressed = false;
+    private bool active_recording = false;
+
     public void Start()
     {
         EventManager.StartListening(EventNames.StartMirrorScene, SpawnTread);
+    }
+
+    void Update()
+    {
+        controller = hand_tracker.leftHand;
+        // Button was just pressed
+        if (controller.is_record_button_pressed && !was_pressed)
+        {
+            // Stop currently active recording
+            if (active_recording)
+            {
+                send_message(STOP_RECORDING, 0);
+                Debug.Log("Stopping Recording");
+                active_recording = false;
+            }
+            else
+            {
+                send_message(START_RECORDING, 0);
+                Debug.Log("Starting Recording");
+                active_recording = true;
+            }
+        }
+        was_pressed = controller.is_record_button_pressed;
     }
 
     private void SpawnTread()
@@ -44,17 +73,11 @@ public class RecordingServer : MonoBehaviour
             client = server.AcceptTcpClient();
             Debug.Log("Client connected");
             stream = client.GetStream();
-            send_message(START_RECORDING, 1);
-            send_message(STOP_RECORDING, 10);
-            send_message(CLOSE_CONNECTION, 2);
         }
         catch (SocketException e)
         {
             Debug.Log(e);
-        }
-        finally
-        {
-            server.Stop();
+            ClosePreviousConnection();
         }
     }
 
@@ -69,19 +92,17 @@ public class RecordingServer : MonoBehaviour
             client.Close();
         }
         server.Stop();
-        thread.Abort();
+        if (thread.IsAlive) thread.Abort();
     }
     public void OnApplicationQuit()
     {
-        stream.Close();
-        client.Close();
-        server.Stop();
-        thread.Abort();
+        ClosePreviousConnection();
     }
 
     public void send_message(byte message_type, int wait_before)
     {
-        Thread.Sleep(wait_before*1000);
+        if (stream == null) return;
+        if (wait_before > 0) Thread.Sleep(wait_before*1000);
         stream.Write(new byte[] {message_type}, 0, 1);
         Debug.Log("Wrote command " + message_type.ToString());
     }

@@ -423,6 +423,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ec69e71c63b3c7e428860ed6ef7160d9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  hand_tracker: {fileID: 2082919655}
+  was_pressed: 0
 --- !u!4 &1167485236
 Transform:
   m_ObjectHideFlags: 0
