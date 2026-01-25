@@ -3,7 +3,6 @@ using TeleopReachy;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using System.Collections;
 
 public class RecordingServer : MonoBehaviour
 {
@@ -12,11 +11,10 @@ public class RecordingServer : MonoBehaviour
     private const byte CLOSE_CONNECTION = 2;
     public const int PORT = 50056;
 
-    private TcpListener server;
     private TcpClient client;
     private NetworkStream stream;
     private Thread thread;
-    private string robot_ip_address = "127.0.0.1";
+    private string robot_ip_address = "192.168.68.60";
 
     [SerializeField]
     private HandsTracker hand_tracker;
@@ -55,22 +53,22 @@ public class RecordingServer : MonoBehaviour
     private void SpawnTread()
     {
         string pref_string = PlayerPrefs.GetString("robot_ip");
-        robot_ip_address = (pref_string != "none") ? pref_string : "127.0.0.1";
+        robot_ip_address = (pref_string != "none") ? pref_string : robot_ip_address;
         Debug.Log("Robot IP = " + robot_ip_address);
-        if (server != null) {
+        if (client != null) {
             ClosePreviousConnection();
         }
-        thread = new Thread(new ThreadStart(SetupServer));
+        thread = new Thread(new ThreadStart(SetupClient));
         thread.Start();
     }
-    private void SetupServer()
+    private void SetupClient()
     {
         try
         {
             IPAddress localAddr = IPAddress.Parse(robot_ip_address);
-            server = new TcpListener(localAddr, PORT);
-            server.Start();
-            client = server.AcceptTcpClient();
+            IPEndPoint endpoint = new IPEndPoint(localAddr, PORT);
+            client = new TcpClient();
+            client.Connect(endpoint);
             Debug.Log("Client connected");
             stream = client.GetStream();
         }
@@ -91,8 +89,7 @@ public class RecordingServer : MonoBehaviour
         {
             client.Close();
         }
-        server.Stop();
-        if (thread.IsAlive) thread.Abort();
+        if (thread != null && thread.IsAlive) thread.Abort();
     }
     public void OnApplicationQuit()
     {
