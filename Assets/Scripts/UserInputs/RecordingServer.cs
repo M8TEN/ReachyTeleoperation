@@ -15,7 +15,7 @@ public class RecordingServer : MonoBehaviour
     private const byte RECORDING_END = 2;
     private const byte NO_REQUEST = 3;
     private const byte ALLOW_REQUEST = 4;
-    public const int PORT = 50056;
+    private const int PORT = 50056;
 
     private TcpClient client;
     private NetworkStream stream;
@@ -29,7 +29,8 @@ public class RecordingServer : MonoBehaviour
     private volatile bool can_record = false;
     private volatile bool display_indicator = false;
     [SerializeField] private Image indicator_image;
-    public bool listen = true;
+    [SerializeField] private Image no_recording_image;
+    private bool listen = true;
 
     public void Start()
     {
@@ -56,6 +57,7 @@ public class RecordingServer : MonoBehaviour
         }
         was_pressed = controller.is_record_button_pressed;
         indicator_image.enabled = display_indicator;
+        no_recording_image.enabled = !can_record;
     }
 
     private void SpawnTread()
