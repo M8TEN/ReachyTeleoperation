@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 using TeleopReachy;
 using System.Net;
 using System.Net.Sockets;
@@ -8,19 +9,27 @@ public class RecordingServer : MonoBehaviour
 {
     private const byte START_RECORDING = 1;
     private const byte STOP_RECORDING = 0;
-    private const byte CLOSE_CONNECTION = 2;
+    private const byte CLOSE_CONNECTION = 5;
+    private const byte DUMMY = 0xFF;
+    private const byte RECORDING_START = 1;
+    private const byte RECORDING_END = 2;
+    private const byte NO_REQUEST = 3;
+    private const byte ALLOW_REQUEST = 4;
     public const int PORT = 50056;
 
     private TcpClient client;
     private NetworkStream stream;
     private Thread thread;
-    private string robot_ip_address = "192.168.68.60";
+    [SerializeField] private string robot_ip_address = "192.168.68.60";
 
-    [SerializeField]
-    private HandsTracker hand_tracker;
+    [SerializeField] private HandsTracker hand_tracker;
     private HandController controller;
     private bool was_pressed = false;
-    private bool active_recording = false;
+    private volatile bool active_recording = false;
+    private volatile bool can_record = false;
+    private volatile bool display_indicator = false;
+    [SerializeField] private Image indicator_image;
+    public bool listen = true;
 
     public void Start()
     {
@@ -38,16 +47,15 @@ public class RecordingServer : MonoBehaviour
             {
                 send_message(STOP_RECORDING, 0);
                 Debug.Log("Stopping Recording");
-                active_recording = false;
             }
-            else
+            else if (can_record)
             {
                 send_message(START_RECORDING, 0);
                 Debug.Log("Starting Recording");
-                active_recording = true;
             }
         }
         was_pressed = controller.is_record_button_pressed;
+        indicator_image.enabled = display_indicator;
     }
 
     private void SpawnTread()
@@ -71,6 +79,46 @@ public class RecordingServer : MonoBehaviour
             client.Connect(endpoint);
             Debug.Log("Client connected");
             stream = client.GetStream();
+            byte[] buffer = new byte[8];
+            while (listen)
+            {
+                int received = stream.Read(buffer, 0, 2);
+                if (received <= 0)
+                {
+                    listen = false;
+                    continue;
+                }
+                for (int i = 0; i < received; i++) {
+                    byte command = buffer[i];
+                    switch (command)
+                    {
+                        case NO_REQUEST:
+                            can_record = false;
+                            break;
+                        
+                        case ALLOW_REQUEST:
+                            can_record = true;
+                            break;
+                        
+                        case RECORDING_START:
+                            display_indicator = true;
+                            active_recording = true;
+                            break;
+                        
+                        case RECORDING_END:
+                            display_indicator = false;
+                            active_recording = false;
+                            break;
+                        
+                        case CLOSE_CONNECTION:
+                            listen = false;
+                            break;
+                        
+                        default:
+                            break;
+                    }
+                }
+            }
         }
         catch (SocketException e)
         {
