@@ -57,7 +57,7 @@ public class RecordingServer : MonoBehaviour
         }
         was_pressed = controller.is_record_button_pressed;
         indicator_image.enabled = display_indicator;
-        no_recording_image.enabled = !can_record;
+        no_recording_image.enabled = !can_record && !active_recording;
     }
 
     private void SpawnTread()
@@ -133,6 +133,7 @@ public class RecordingServer : MonoBehaviour
     {
         if (stream != null)
             {
+                send_message(CLOSE_CONNECTION, 0);
                 stream.Close();
             }
         if (client != null)
