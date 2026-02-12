@@ -99,8 +99,8 @@ namespace TeleopReachy
             ArmEndEffector rightEndEffector;
             if (UserSize.Instance.UserArmSize == 0)
             {
-                Reachy.Sdk.Kinematics.Matrix4x4 target_pose = right_limiter.LimitToVolume(handsTracker.rightHand.target_pos);
-                rightEndEffector = new ArmEndEffector { Side = handsTracker.rightHand.side_id, Pose = target_pose };
+                right_limiter.ClampMovement(ref handsTracker.rightHand.target_pos);
+                rightEndEffector = new ArmEndEffector { Side = handsTracker.rightHand.side_id, Pose = handsTracker.rightHand.target_pos };
             }
             else
             {
@@ -109,7 +109,8 @@ namespace TeleopReachy
                 right_target_pos_calibrated.Data[7] = (right_target_pos_calibrated.Data[7] + UserSize.Instance.UserShoulderWidth) * reachyArmSize / UserSize.Instance.UserArmSize - reachyShoulderWidth;
                 right_target_pos_calibrated.Data[11] = right_target_pos_calibrated.Data[11] * reachyArmSize / UserSize.Instance.UserArmSize;
 
-                rightEndEffector = new ArmEndEffector { Side = handsTracker.rightHand.side_id, Pose = right_limiter.LimitToVolume(right_target_pos_calibrated) };
+                right_limiter.ClampMovement(ref right_target_pos_calibrated);
+                rightEndEffector = new ArmEndEffector { Side = handsTracker.rightHand.side_id, Pose = right_target_pos_calibrated };
             }
 
             return rightEndEffector;
@@ -120,8 +121,8 @@ namespace TeleopReachy
             ArmEndEffector leftEndEffector;
             if (UserSize.Instance.UserArmSize == 0)
             {
-                Reachy.Sdk.Kinematics.Matrix4x4 target_pose = left_limiter.LimitToVolume(handsTracker.leftHand.target_pos);
-                leftEndEffector = new ArmEndEffector { Side = handsTracker.leftHand.side_id, Pose = target_pose };
+                left_limiter.ClampMovement(ref handsTracker.leftHand.target_pos);
+                leftEndEffector = new ArmEndEffector { Side = handsTracker.leftHand.side_id, Pose = handsTracker.leftHand.target_pos };
             }
             else
             {
@@ -130,7 +131,8 @@ namespace TeleopReachy
                 left_target_pos_calibrated.Data[7] = (left_target_pos_calibrated.Data[7] - UserSize.Instance.UserShoulderWidth) * reachyArmSize / UserSize.Instance.UserArmSize + reachyShoulderWidth;
                 left_target_pos_calibrated.Data[11] = left_target_pos_calibrated.Data[11] * reachyArmSize / UserSize.Instance.UserArmSize;
 
-                leftEndEffector = new ArmEndEffector { Side = handsTracker.leftHand.side_id, Pose = left_limiter.LimitToVolume(left_target_pos_calibrated) };
+                left_limiter.ClampMovement(ref left_target_pos_calibrated);
+                leftEndEffector = new ArmEndEffector { Side = handsTracker.leftHand.side_id, Pose = left_target_pos_calibrated };
             }
 
             return leftEndEffector;

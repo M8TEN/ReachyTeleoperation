@@ -6,44 +6,67 @@ public class LimitMovement
     public const int RIGHT_SIDE = 1;
     private readonly double[] LEFT_VOLUME_LIMITS =
     {
-        0.2970021372738335,    //x-min
-        0.5150536650457043,    //x-max
-        0.04474292855345502,   //y-min
-        0.4065434369531554,    //y-max
-        -0.412436990943232444, //z-min
-        -0.022780532069723743  //z-max
+        0.11811043229753332,  //x-min
+        0.6335332352560936,   //x-max
+        0.13514077968129315,  //y-min
+        0.6592141561146554,   //y-max
+        -0.34492036682391924, //z-min
+        0.6003516143933125    //z-max
     };
 
     private readonly double[] RIGHT_VOLUME_LIMITS =
     {
-        0.21701274404719764,  //x-min
-        0.6186213994503541,   //x-max
-        -0.5567124991918473,  //y-min
-        -0.13960405374265367, //y-max
-        -0.3996426656448221,  //z-min
-        0.5467782688288836    //z-max
+        0.20231462989210047,  //x-min
+        0.6397911697167149,   //x-max
+        -0.6977623753471274,  //y-min
+        -0.09710021007469337, //y-max
+        -0.34623931460098595, //z-min
+        0.5954658554344094    //z-max
     };
 
-    private double[] last_position = new double[3];
+    private double[] last_position;
     private int side;
     private double[] limits;
+    private bool first_valid_pose_reached = false;
 
     public LimitMovement(int arm_side)
     {
         side = arm_side;
-        limits = (side == LEFT_SIDE) ? ref LEFT_VOLUME_LIMITS : ref RIGHT_VOLUME_LIMITS;
-    }
-
-    public Reachy.Sdk.Kinematics.Matrix4x4 LimitToVolume(Reachy.Sdk.Kinematics.Matrix4x4 pose)
-    {
-        if (side != LEFT_SIDE && side != RIGHT_SIDE)
+        if (side == LEFT_SIDE)
         {
-            pose.Data[3] = last_position[0];
-            pose.Data[7] = last_position[1];
-            pose.Data[11] = last_position[2];
-            return pose;
+            limits  = new double[] {
+                0.2970021372738335,    //x-min
+                0.5150536650457043,    //x-max
+                0.04474292855345502,   //y-min
+                0.4065434369531554,    //y-max
+                -0.412436990943232444, //z-min
+                -0.022780532069723743  //z-max
+            };
+            last_position = new double[] {
+                limits[1] - limits[0],
+                limits[3] - limits[2],
+                limits[5] - limits[4]
+            };
         }
-        //Matrix coords: X = 3, Y = 7, Z = 11
+        else if (side == RIGHT_SIDE)
+        {
+            limits = new double[] {
+                0.21701274404719764,  //x-min
+                0.6186213994503541,   //x-max
+                -0.5567124991918473,  //y-min
+                -0.13960405374265367, //y-max
+                -0.3996426656448221,  //z-min
+                0.5467782688288836    //z-max
+            };
+            last_position = new double[] {
+                limits[1] - limits[0],
+                limits[3] - limits[2],
+                limits[5] - limits[4]
+            };
+        }
+    }
+    public void ClampMovement(ref Reachy.Sdk.Kinematics.Matrix4x4 pose)
+    {
         double x = pose.Data[3];
         double y = pose.Data[7];
         double z = pose.Data[11];
@@ -53,99 +76,12 @@ public class LimitMovement
             z >= limits[4] && z <= limits[5]
         );
 
-        if (is_inside_volume)
+        if (is_inside_volume && !first_valid_pose_reached)
         {
-            last_position[0] = pose.Data[3];
-            last_position[1] = pose.Data[7];
-            last_position[2] = pose.Data[11];
-            return pose;
+            first_valid_pose_reached = true;
         }
-        
-        double[] direction =
-        {
-            x - last_position[0],
-            y - last_position[1],
-            z - last_position[2]
-        };
-
-        double[] start = {x, y, z};
-        double smallest_t_value = Double.PositiveInfinity;
-        if (direction[0] < 1e-6)
-        {
-            double current_t = (limits[0] - x) / direction[0];
-            if (current_t >= -1e-6)
-            {
-                smallest_t_value = Math.Min(smallest_t_value, current_t);
-            }
-        }
-        if (direction[0] > -1e-6)
-        {
-            double current_t = (limits[1] - x) / direction[0];
-            if (current_t >= -1e-6)
-            {
-                smallest_t_value = Math.Min(smallest_t_value, current_t);
-            }
-        }
-        if (direction[1] < 1e-6)
-        {
-            double current_t = (limits[2] - y) / direction[1];
-            if (current_t >= -1e-6)
-            {
-                smallest_t_value = Math.Min(smallest_t_value, current_t);
-            }
-        }
-        if (direction[1] > -1e-6)
-        {
-            double current_t = (limits[3] - y) / direction[1];
-            if (current_t >= -1e-6)
-            {
-                smallest_t_value = Math.Min(smallest_t_value, current_t);
-            }
-        }
-        if (direction[2] < 1e-6)
-        {
-            double current_t = (limits[4] - z) / direction[2];
-            if (current_t >= -1e-6)
-            {
-                smallest_t_value = Math.Min(smallest_t_value, current_t);
-            }
-        }
-        if (direction[2] > -1e-6)
-        {
-            double current_t = (limits[5] - z) / direction[2];
-            if (current_t >= -1e-6)
-            {
-                smallest_t_value = Math.Min(smallest_t_value, current_t);
-            }
-        }
-
-        if (Double.IsPositiveInfinity(smallest_t_value)) //No valid t found
-        {
-            pose.Data[3] = last_position[0];
-            pose.Data[7] = last_position[1];
-            pose.Data[11] = last_position[2];
-            return pose;
-        }
-
-        smallest_t_value = Math.Max(0.0d, smallest_t_value);
-        if (smallest_t_value > 1.0d)
-        {
-            last_position[0] = pose.Data[3];
-            last_position[1] = pose.Data[7];
-            last_position[2] = pose.Data[11];
-            return pose;
-        }
-
-        double new_x = start[0] + direction[0] * smallest_t_value;
-        double new_y = start[1] + direction[1] * smallest_t_value;
-        double new_z = start[2] + direction[2] * smallest_t_value;
-
-        last_position[0] = new_x;
-        last_position[1] = new_y;
-        last_position[2] = new_z;
-        pose.Data[3] = new_x;
-        pose.Data[7] = new_y;
-        pose.Data[11] = new_z;
-        return pose;
+        pose.Data[3] = Math.Min(limits[1], Math.Max(limits[0], x));
+        pose.Data[7] = Math.Min(limits[3], Math.Max(limits[2], y));
+        pose.Data[11] = Math.Min(limits[5], Math.Max(limits[4], z));
     }
 }
